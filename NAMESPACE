@@ -2,6 +2,6 @@
 
 export("%>%")
 export(etch)
-export(redis_slate)
+export(slate)
 export(study)
 importFrom(magrittr,"%>%")
