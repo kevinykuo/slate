@@ -29,3 +29,8 @@ new_slate <- function(x, ..., class = character()) {
     class = c(class, "slate")
   )
 }
+
+#' @export
+print.slate <- function(x, ...) {
+  cat(glue::glue("Slate [Redis Client ID: {x$client_id}, Path: {x$client$config()$path}]"))
+}
