@@ -3,9 +3,13 @@
 #' @param config List of config options.
 #' @export
 slate <- function(path, config = slate_config()) {
+  client <- redux::hiredis(path = path)
+  client_id <- client$command(c("CLIENT", "ID"))
+
   new_slate(
     list(
       client = redux::hiredis(path = path),
+      client_id = client_id,
       config = config
     )
   )

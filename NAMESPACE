@@ -3,5 +3,6 @@
 export("%>%")
 export(etch)
 export(slate)
+export(stare)
 export(study)
 importFrom(magrittr,"%>%")
