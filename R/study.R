@@ -3,33 +3,23 @@
 #' @param slate Slate object.
 #' @param start Start time.
 #' @param end End time.
-#' @param level Logging level (not implemented).
 #' @export
-study <- function(slate, start = NULL, end = NULL, level = NULL) {
+study <- function(slate, start = NULL, end = NULL) {
   client <- slate$client
   app_id <- slate$config$app_id
   start <- start %||% "-"
   end <- end %||% "+"
   df <- client$command(c("XRANGE", app_id, start, end)) %>%
     process_stream_output(app_id = app_id)
-  df
-  # %>%
-  #   sapply(function(x) {
-  #     milliseconds_since_epoch <- substr(x[[1]], 1, 13) %>%
-  #       as.numeric()
-  #     timestamp <- format(
-  #       as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01"),
-  #       "%H:%M:%OS3"
-  #     )
-  #     logging_level <- x[[2]][[2]]
-  #     msg <- x[[2]][[4]]
-  #
-  #     glue::glue("{timestamp} [{logging_level}] {app_id}: {msg}")
-  #   }) %>%
-  #   cat(sep = "\n")
+  df %>%
+    new_slate_tile()
 }
 
 #' Stare
+#'
+#' @param slate A slate object.
+#' @param app_ids Vector of app IDs to watch.
+#' @param id Starting ID.
 #' @export
 stare <- function(slate, app_ids = NULL, id = NULL) {
   client <- slate$client
@@ -54,8 +44,6 @@ stare <- function(slate, app_ids = NULL, id = NULL) {
     res %>%
       lapply(function(x) process_stream_output(x[[2]], app_id = x[[1]]))
   }
-
-
 }
 
 process_stream_output <- function(x, app_id) {
@@ -65,27 +53,44 @@ process_stream_output <- function(x, app_id) {
       milliseconds_since_epoch <- substr(x[[1]], 1, 13) %>%
         as.numeric()
       timestamp <- as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01")
-      # timestamp <- format(
-      #   as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01"),
-      #   "%H:%M:%OS3"
-      # )
+
       logging_level <- x[[2]][[2]]
       msg <- x[[2]][[4]]
 
       list(id = id, timestamp = timestamp, level = logging_level, app_id = app_id, message = msg)
     }) %>%
     (function(x) do.call(Map, c(f = c, x))) %>%
-    as.data.frame()
+    as.data.frame() %>%
+    new_slate_tile()
 }
 
-# slate_tile <- function() {
-#
-# }
-#
-# new_slate_tile <- function() {
-#   structure(
-#     x,
-#     ...,
-#     class = c(class, "slate_tile")
-#   )
-# }
+new_slate_tile <- function(x, ...) {
+  structure(
+    x,
+    ...,
+    class = c("slate_tile", class(x))
+  )
+}
+
+#' @export
+print.slate_tile <- function(x, ...) {
+  x$timestamp <- crayon::silver(format(x$timestamp, "%H:%M:%OS3"))
+
+  apply(x, 1, function(l) {
+    glue::glue(
+      '{l[["timestamp"]]}',
+      '{colorize_level(l[["level"]])}',
+      '{l[["message"]]}',
+      '{crayon::silver("app_id=")}{l[["app_id"]]}',
+      .sep = " "
+    )
+  }) %>%
+    cat()
+}
+
+colorize_level <- function(lvl) {
+  switch(lvl,
+         INFO = crayon::green("INFO"),
+         WARN = crayon::yellow("WARN"),
+         ERROR = crayon::red("ERROR"))
+}

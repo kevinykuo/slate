@@ -32,5 +32,7 @@ new_slate <- function(x, ..., class = character()) {
 
 #' @export
 print.slate <- function(x, ...) {
-  cat(glue::glue("Slate [Redis Client ID: {x$client_id}, Path: {x$client$config()$path}]"))
+  cat(glue::glue("Slate {crayon::silver('redis_client_id=')}{x$client_id}",
+                 "{crayon::silver('path=')}{x$client$config()$path}",
+                 .sep = " "))
 }
