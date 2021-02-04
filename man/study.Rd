@@ -4,7 +4,7 @@
 \alias{study}
 \title{Study}
 \usage{
-study(slate, start = NULL, end = NULL, level = NULL)
+study(slate, start = NULL, end = NULL)
 }
 \arguments{
 \item{slate}{Slate object.}
@@ -12,8 +12,6 @@ study(slate, start = NULL, end = NULL, level = NULL)
 \item{start}{Start time.}
 
 \item{end}{End time.}
-
-\item{level}{Logging level (not implemented).}
 }
 \description{
 Study
