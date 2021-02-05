@@ -46,6 +46,24 @@ stare <- function(slate, app_ids = NULL, id = NULL) {
   }
 }
 
+#' Ticker
+#'
+#' @param slate A slate object.
+#' @param app_ids Vector of app IDs to watch.
+#'
+#' @export
+ticker <- function(slate, app_ids = NULL) {
+  client <- slate$client
+  app_ids <- app_ids %||% slate$config$app_id
+
+  while (TRUE) {
+    stare(slate = slate, app_ids = app_ids) %>%
+      lapply(print)
+  }
+
+  invisible(NULL)
+}
+
 process_stream_output <- function(x, app_id) {
   x %>%
     lapply(function(x) {
@@ -85,7 +103,7 @@ print.slate_tile <- function(x, ...) {
       .sep = " "
     )
   }) %>%
-    cat()
+    cat("\n")
 }
 
 colorize_level <- function(lvl) {

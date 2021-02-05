@@ -10,8 +10,8 @@ etch <- function(slate, message, app_id = NULL, level = NULL) {
   logging_level <- level %||% slate$config$default_level
   app_id <- app_id %||% slate$config$app_id
   client$command(c(
-    "XADD", app_id, "*", 
-    "level", logging_level, 
+    "XADD", app_id, "*",
+    "level", logging_level,
     "message", message
   ))
   invisible(slate)
