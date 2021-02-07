@@ -72,10 +72,13 @@ process_stream_output <- function(x, app_id) {
         as.numeric()
       timestamp <- as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01")
 
-      logging_level <- x[[2]][[2]]
-      msg <- x[[2]][[4]]
+      names_idx <- seq(1, length(x[[2]]) - 1, by = 2)
+      l <- setNames(x[[2]][-names_idx], x[[2]][names_idx])
+      # logging_level <- x[[2]][[2]]
+      # msg <- x[[2]][[4]]
 
-      list(id = id, timestamp = timestamp, level = logging_level, app_id = app_id, message = msg)
+      c(list(id = id, timestamp = timestamp, app_id = app_id), l)
+        # list(id = id, timestamp = timestamp, level = logging_level, app_id = app_id, message = msg)
     }) %>%
     (function(x) do.call(Map, c(f = c, x))) %>%
     as.data.frame() %>%
@@ -92,16 +95,34 @@ new_slate_tile <- function(x, ...) {
 
 #' @export
 print.slate_tile <- function(x, ...) {
+  if (!nrow(x)) {
+    return(invisible(NULL))
+  }
+
   x$timestamp <- crayon::silver(format(x$timestamp, "%H:%M:%OS3"))
 
   apply(x, 1, function(l) {
-    glue::glue(
+    required_output_header <- glue::glue(
       '{l[["timestamp"]]}',
       '{colorize_level(l[["level"]])}',
       '{l[["message"]]}',
-      '{crayon::silver("app_id=")}{l[["app_id"]]}',
       .sep = " "
     )
+
+    required_output_footer <- glue::glue(
+     '{crayon::silver("app_id=")}{l[["app_id"]]}' 
+    )
+
+    l <- l[setdiff(names(l), c("id", "timestamp", "level", "message", "app_id"))]
+
+    optional_output <- if (length(l)) {
+      paste0(crayon::silver(paste0(names(l), "=")), l, collapse = " ")
+    } else {
+      NULL
+    }
+
+    c(required_output_header, optional_output, required_output_footer)
+
   }) %>%
     cat("\n")
 }

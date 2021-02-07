@@ -4,16 +4,18 @@
 \alias{etch}
 \title{Etch}
 \usage{
-etch(slate, message, app_id = NULL, level = NULL)
+etch(slate, message, ..., level = NULL, app_id = NULL)
 }
 \arguments{
 \item{slate}{Slate object.}
 
 \item{message}{Message to log.}
 
-\item{app_id}{Application ID.}
+\item{...}{Named fields and values.}
 
 \item{level}{Logging level.}
+
+\item{app_id}{Application ID.}
 }
 \description{
 Etch
