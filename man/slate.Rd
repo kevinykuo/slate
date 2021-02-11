@@ -4,12 +4,12 @@
 \alias{slate}
 \title{Create a Slate}
 \usage{
-slate(path, config = slate_config())
+slate(path, app_id = NULL)
 }
 \arguments{
 \item{path}{Unix domain socket.}
 
-\item{config}{List of config options.}
+\item{app_id}{App ID.}
 }
 \description{
 Create a Slate

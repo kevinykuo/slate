@@ -1,15 +1,17 @@
 #' Study
 #'
 #' @param slate Slate object.
+#' @param app_id App ID.
 #' @param start Start time.
 #' @param end End time.
 #' @export
-study <- function(slate, start = NULL, end = NULL) {
+study <- function(slate, app_id = NULL, start = NULL, end = NULL) {
   client <- slate$client
-  app_id <- slate$config$app_id
+  app_id <- app_id %||% slate$app_id
+  key <- app_id_to_key(app_id)
   start <- start %||% "-"
   end <- end %||% "+"
-  df <- client$command(c("XRANGE", app_id, start, end)) %>%
+  df <- client$command(c("XRANGE", key, start, end)) %>%
     process_stream_output(app_id = app_id)
   df %>%
     new_slate_tile()
@@ -18,20 +20,26 @@ study <- function(slate, start = NULL, end = NULL) {
 #' Stare
 #'
 #' @param slate A slate object.
-#' @param app_ids Vector of app IDs to watch.
+#' @param app_id Vector of app IDs to watch.
 #' @param id Starting ID.
 #' @export
-stare <- function(slate, app_ids = NULL, id = NULL) {
+stare <- function(slate, app_id = NULL, last_id = NULL) {
   client <- slate$client
-  app_ids <- app_ids %||% slate$config$app_id
-  id <- id %||% "$"
+  app_id <- app_id %||% slate$default_app_id
+  last_id <- last_id %||% rep("$", length(app_id))
+
+  keys <- app_id_to_key(app_id)
+
+  if (!identical(length(keys), length(last_id))) {
+    stop("`app_id` and `last_id` must have the same length.", call. = FALSE)
+  }
 
   interrupted <- FALSE
   res <- NULL
 
   while (!interrupted && is.null(res)) {
     res <- tryCatch(
-      client$command(c("XREAD", "BLOCK", 1000, "STREAMS", app_ids, id)),
+      client$command(c("XREAD", "BLOCK", 100, "STREAMS", keys, last_id)),
       interrupt = function(x) {
         interrupted <<- TRUE
         NULL
@@ -52,12 +60,12 @@ stare <- function(slate, app_ids = NULL, id = NULL) {
 #' @param app_ids Vector of app IDs to watch.
 #'
 #' @export
-ticker <- function(slate, app_ids = NULL) {
+ticker <- function(slate, app_id = NULL) {
   client <- slate$client
-  app_ids <- app_ids %||% slate$config$app_id
+  app_id <- app_id %||% slate$default_app_id
 
   while (TRUE) {
-    stare(slate = slate, app_ids = app_ids) %>%
+    stare(slate = slate, app_id = app_id) %>%
       lapply(print)
   }
 

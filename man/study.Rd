@@ -4,10 +4,12 @@
 \alias{study}
 \title{Study}
 \usage{
-study(slate, start = NULL, end = NULL)
+study(slate, app_id = NULL, start = NULL, end = NULL)
 }
 \arguments{
 \item{slate}{Slate object.}
+
+\item{app_id}{App ID.}
 
 \item{start}{Start time.}
 
