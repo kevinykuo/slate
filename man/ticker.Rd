@@ -4,12 +4,12 @@
 \alias{ticker}
 \title{Ticker}
 \usage{
-ticker(slate, app_ids = NULL)
+ticker(slate, app_id = NULL)
 }
 \arguments{
 \item{slate}{A slate object.}
 
-\item{app_ids}{Vector of app IDs to watch.}
+\item{app_id}{Vector of app IDs to watch.}
 }
 \description{
 Ticker

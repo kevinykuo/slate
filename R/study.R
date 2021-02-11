@@ -21,7 +21,7 @@ study <- function(slate, app_id = NULL, start = NULL, end = NULL) {
 #'
 #' @param slate A slate object.
 #' @param app_id Vector of app IDs to watch.
-#' @param id Starting ID.
+#' @param last_id Starting ID.
 #' @export
 stare <- function(slate, app_id = NULL, last_id = NULL) {
   client <- slate$client
@@ -57,16 +57,28 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
 #' Ticker
 #'
 #' @param slate A slate object.
-#' @param app_ids Vector of app IDs to watch.
+#' @param app_id Vector of app IDs to watch.
 #'
 #' @export
 ticker <- function(slate, app_id = NULL) {
   client <- slate$client
   app_id <- app_id %||% slate$default_app_id
 
-  while (TRUE) {
-    stare(slate = slate, app_id = app_id) %>%
-      lapply(print)
+  interrupted <- FALSE
+
+  while (!interrupted) {
+    tryCatch({
+
+      tiles <- stare(slate = slate, app_id = app_id)
+
+        # lapply(print)
+    },
+      interrupt = function(x) {
+        interrupted <<- TRUE
+        rlang::interrupt()
+        NULL
+      }
+    )
   }
 
   invisible(NULL)
@@ -82,15 +94,17 @@ process_stream_output <- function(x, app_id) {
 
       names_idx <- seq(1, length(x[[2]]) - 1, by = 2)
       l <- setNames(x[[2]][-names_idx], x[[2]][names_idx])
-      # logging_level <- x[[2]][[2]]
-      # msg <- x[[2]][[4]]
 
       c(list(id = id, timestamp = timestamp, app_id = app_id), l)
-        # list(id = id, timestamp = timestamp, level = logging_level, app_id = app_id, message = msg)
     }) %>%
-    (function(x) do.call(Map, c(f = c, x))) %>%
-    as.data.frame() %>%
-    new_slate_tile()
+    (function(x) {
+      df <- do.call(Map, c(f = c, x)) %>%
+        as.data.frame()
+
+      last_id <- x[[length(x)]][["id"]]
+
+      new_slate_tile(df, app_id = app_id, last_id = last_id)
+    })
 }
 
 new_slate_tile <- function(x, ...) {
@@ -132,7 +146,7 @@ print.slate_tile <- function(x, ...) {
     c(required_output_header, optional_output, required_output_footer)
 
   }) %>%
-    cat("\n")
+    cat("\n", sep = "\n")
 }
 
 colorize_level <- function(lvl) {

@@ -4,7 +4,7 @@
 \alias{chisel}
 \title{Modify Default Logging Settings}
 \usage{
-chisel(slate, app_id = NULL, level = NULL)
+chisel(slate, default_app_id = NULL, default_level = NULL)
 }
 \arguments{
 \item{slate}{A slate object.}

@@ -17,4 +17,5 @@ Imports:
     redux,
     magrittr,
     glue,
-    crayon
+    crayon,
+    rlang

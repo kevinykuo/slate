@@ -4,7 +4,7 @@
 \alias{slate}
 \title{Create a Slate}
 \usage{
-slate(path, app_id = NULL)
+slate(path, default_app_id = NULL, default_level = NULL)
 }
 \arguments{
 \item{path}{Unix domain socket.}

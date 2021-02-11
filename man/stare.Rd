@@ -4,14 +4,14 @@
 \alias{stare}
 \title{Stare}
 \usage{
-stare(slate, app_ids = NULL, id = NULL)
+stare(slate, app_id = NULL, last_id = NULL)
 }
 \arguments{
 \item{slate}{A slate object.}
 
-\item{app_ids}{Vector of app IDs to watch.}
+\item{app_id}{Vector of app IDs to watch.}
 
-\item{id}{Starting ID.}
+\item{last_id}{Starting ID.}
 }
 \description{
 Stare
