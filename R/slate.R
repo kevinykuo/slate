@@ -6,12 +6,12 @@ slate <- function(path, default_app_id = NULL, default_level = NULL) {
   default_app_id <- default_app_id %||% paste0("R_", Sys.getpid())
   default_level <- default_level %||% "INFO"
   rc <- redux::hiredis(path = path)
-  rc_id <- client$command(c("CLIENT", "ID"))
+  rc_id <- rc$command(c("CLIENT", "ID"))
 
   new_slate(
     list(
       rc = redux::hiredis(path = path),
-      rc_id = client_id,
+      rc_id = rc_id,
       default_app_id = default_app_id,
       default_level = default_level
     )
@@ -48,7 +48,7 @@ new_slate <- function(x, ..., class = character()) {
 #' @export
 print.slate <- function(x, ...) {
   cat(glue::glue("Slate {crayon::silver('redis_client_id=')}{x$rc_id}",
-                 "{crayon::silver('path=')}{x$client$config()$path}",
+                 "{crayon::silver('path=')}{x$rc$config()$path}",
                  "{crayon::silver('default_level=')}{x$default_level}",
                  "{crayon::silver('default_app_id=')}{x$default_app_id}",
                  .sep = " "))

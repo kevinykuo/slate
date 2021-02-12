@@ -8,7 +8,7 @@
 #' @export
 etch <- function(slate, message, ..., level = NULL, app_id = NULL) {
 
-  client <- slate$client
+  rc <- slate$rc
   logging_level <- level %||% slate$default_level
   app_id <- app_id %||% slate$default_app_id
   key <- app_id_to_key(app_id)
@@ -26,7 +26,7 @@ etch <- function(slate, message, ..., level = NULL, app_id = NULL) {
       unlist(recursive = FALSE)
   }
 
-  client$command(c(
+  rc$command(c(
     "XADD", key, "*",
     "level", logging_level,
     "message", message,

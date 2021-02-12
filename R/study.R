@@ -1,17 +1,17 @@
-#' Study
+#' Peruse
 #'
 #' @param slate Slate object.
 #' @param app_id App ID.
 #' @param start Start time.
 #' @param end End time.
 #' @export
-study <- function(slate, app_id = NULL, start = NULL, end = NULL) {
-  client <- slate$client
-  app_id <- app_id %||% slate$app_id
+peruse <- function(slate, app_id = NULL, start = NULL, end = NULL) {
+  rc <- slate$rc
+  app_id <- app_id %||% slate$default_app_id
   key <- app_id_to_key(app_id)
   start <- start %||% "-"
   end <- end %||% "+"
-  df <- client$command(c("XRANGE", key, start, end)) %>%
+  df <- rc$command(c("XRANGE", key, start, end)) %>%
     process_stream_output(app_id = app_id)
   df %>%
     new_slate_tile()
@@ -24,8 +24,8 @@ study <- function(slate, app_id = NULL, start = NULL, end = NULL) {
 #' @param last_id Starting ID.
 #' @export
 stare <- function(slate, app_id = NULL, last_id = NULL) {
-  client <- slate$client
-  app_id <- app_id %||% slate$default_app_id
+  rc <- slate$rc
+  app_id <- app_id %||% get_slate_keys(slate)
   last_id <- last_id %||% rep("$", length(app_id))
 
   keys <- app_id_to_key(app_id)
@@ -39,7 +39,7 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
 
   while (!interrupted && is.null(res)) {
     res <- tryCatch(
-      client$command(c("XREAD", "BLOCK", 100, "STREAMS", keys, last_id)),
+      rc$command(c("XREAD", "BLOCK", 100, "STREAMS", keys, last_id)),
       interrupt = function(x) {
         interrupted <<- TRUE
         NULL
@@ -47,31 +47,44 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
     )
   }
 
+  print(res)
 
-  if (is.null(res)) return(NULL) else {
+  if (is.null(res)) return(invisible(NULL)) else {
     res %>%
       lapply(function(x) process_stream_output(x[[2]], app_id = x[[1]]))
   }
 }
 
-#' Ticker
+#' Gaze 
 #'
 #' @param slate A slate object.
 #' @param app_id Vector of app IDs to watch.
 #'
 #' @export
-ticker <- function(slate, app_id = NULL) {
-  client <- slate$client
-  app_id <- app_id %||% slate$default_app_id
+gaze <- function(slate, app_id = NULL) {
+  app_id <- app_id %||% get_slate_keys(slate)
+  keys <- app_id_to_key(app_id)
+  ids <- rep("$", length(keys))
 
   interrupted <- FALSE
 
+  key_ids <- rlang::env()
+  rlang::env_bind(key_ids, !!!rlang::set_names(ids, keys))
+
   while (!interrupted) {
     tryCatch({
+      l <- key_ids %>% as.list()
 
-      tiles <- stare(slate = slate, app_id = app_id)
+      tiles <- stare(
+        slate = slate,
+        app_id = names(l),
+        last_id = as.character(l)
+      )
 
-        # lapply(print)
+      lapply(tiles, function(x) {
+        key_ids[[attr(x, "app_id")]] <- attr(x, "last_id")
+        print(x)
+      })
     },
       interrupt = function(x) {
         interrupted <<- TRUE
@@ -85,6 +98,12 @@ ticker <- function(slate, app_id = NULL) {
 }
 
 process_stream_output <- function(x, app_id) {
+  if (!length(x)) {
+    return(invisible(NULL))
+  }
+
+  browser()
+
   x %>%
     lapply(function(x) {
       id <- x[[1]]
@@ -121,18 +140,17 @@ print.slate_tile <- function(x, ...) {
     return(invisible(NULL))
   }
 
-  x$timestamp <- crayon::silver(format(x$timestamp, "%H:%M:%OS3"))
+  browser()
+
+  x$timestamp <- crayon::silver(format(x$timestamp, "%Y-%m-%d %H:%M:%OS3"))
 
   apply(x, 1, function(l) {
     required_output_header <- glue::glue(
       '{l[["timestamp"]]}',
       '{colorize_level(l[["level"]])}',
+      '[{l[["app_id"]]}]',
       '{l[["message"]]}',
       .sep = " "
-    )
-
-    required_output_footer <- glue::glue(
-     '{crayon::silver("app_id=")}{l[["app_id"]]}' 
     )
 
     l <- l[setdiff(names(l), c("id", "timestamp", "level", "message", "app_id"))]
@@ -140,13 +158,13 @@ print.slate_tile <- function(x, ...) {
     optional_output <- if (length(l)) {
       paste0(crayon::silver(paste0(names(l), "=")), l, collapse = " ")
     } else {
-      NULL
+      ""
     }
 
-    c(required_output_header, optional_output, required_output_footer)
+    glue::glue(required_output_header, optional_output, .sep = " ")
 
   }) %>%
-    cat("\n", sep = "\n")
+    cat(sep = "\n")
 }
 
 colorize_level <- function(lvl) {
