@@ -63,17 +63,17 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
 #' @export
 gaze <- function(slate, app_id = NULL) {
   app_id <- app_id %||% get_slate_keys(slate)
-  keys <- app_id_to_key(app_id)
-  ids <- rep("$", length(keys))
+  # keys <- app_id_to_key(app_id)
+  ids <- rep("$", length(app_id))
 
   interrupted <- FALSE
 
-  key_ids <- rlang::env()
-  rlang::env_bind(key_ids, !!!rlang::set_names(ids, keys))
+  app_id_entry_ids <- rlang::env()
+  rlang::env_bind(app_id_entry_ids, !!!rlang::set_names(ids, app_id))
 
   while (!interrupted) {
     tryCatch({
-      l <- key_ids %>% as.list()
+      l <- app_id_entry_ids %>% as.list()
 
       tiles <- stare(
         slate = slate,
@@ -82,7 +82,7 @@ gaze <- function(slate, app_id = NULL) {
       )
 
       lapply(tiles, function(x) {
-        key_ids[[attr(x, "app_id")]] <- attr(x, "last_id")
+        app_id_entry_ids[[attr(x, "app_id")]] <- attr(x, "last_id")
         print(x)
       })
     },
@@ -101,8 +101,6 @@ process_stream_output <- function(x, app_id) {
   if (!length(x)) {
     return(invisible(NULL))
   }
-
-  browser()
 
   x %>%
     lapply(function(x) {
@@ -139,8 +137,6 @@ print.slate_tile <- function(x, ...) {
   if (!nrow(x)) {
     return(invisible(NULL))
   }
-
-  browser()
 
   x$timestamp <- crayon::silver(format(x$timestamp, "%Y-%m-%d %H:%M:%OS3"))
 
