@@ -6,6 +6,19 @@
 #' @param end End time.
 #' @export
 peruse <- function(slate, app_id = NULL, start = NULL, end = NULL) {
+  app_id <- if (is.null(app_id)) {
+    get_slate_keys(slate)
+  }
+
+  dt <- app_id %>%
+    lapply(function(x) peruse_impl(slate, app_id = x, start = start, end = end)) %>%
+    data.table::rbindlist(fill = TRUE)
+
+  data.table::setorder(dt, "id") %>%
+    new_slate_tile()
+}
+
+peruse_impl <- function(slate, app_id, start, end) {
   rc <- slate$rc
   app_id <- app_id %||% slate$default_app_id
   key <- app_id_to_key(app_id)
