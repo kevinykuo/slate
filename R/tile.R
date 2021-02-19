@@ -47,11 +47,9 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
     )
   }
 
-  print(res)
-
   if (is.null(res)) return(invisible(NULL)) else {
     res %>%
-      lapply(function(x) process_stream_output(x[[2]], app_id = x[[1]]))
+      lapply(function(x) process_stream_output(x[[2]], app_id = key_to_app_id(x[[1]])))
   }
 }
 
