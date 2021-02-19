@@ -18,4 +18,5 @@ Imports:
     magrittr,
     glue,
     crayon,
-    rlang
+    rlang,
+    data.table

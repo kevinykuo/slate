@@ -11,10 +11,8 @@ peruse <- function(slate, app_id = NULL, start = NULL, end = NULL) {
   key <- app_id_to_key(app_id)
   start <- start %||% "-"
   end <- end %||% "+"
-  df <- rc$command(c("XRANGE", key, start, end)) %>%
+  rc$command(c("XRANGE", key, start, end)) %>%
     process_stream_output(app_id = app_id)
-  df %>%
-    new_slate_tile()
 }
 
 #' Stare
@@ -53,7 +51,7 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
   }
 }
 
-#' Gaze 
+#' Gaze
 #'
 #' @param slate A slate object.
 #' @param app_id Vector of app IDs to watch.
@@ -84,15 +82,20 @@ gaze <- function(slate, app_id = NULL) {
         print(x)
       })
     },
-      interrupt = function(x) {
-        interrupted <<- TRUE
-        rlang::interrupt()
-        NULL
-      }
+    interrupt = function(x) {
+      interrupted <<- TRUE
+      rlang::interrupt()
+      NULL
+    }
     )
   }
 
   invisible(NULL)
+}
+
+id_to_timestamp <- function(x) {
+  milliseconds_since_epoch <- as.numeric(substr(x, 1, 13))
+  as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01")
 }
 
 process_stream_output <- function(x, app_id) {
@@ -100,26 +103,20 @@ process_stream_output <- function(x, app_id) {
     return(invisible(NULL))
   }
 
-  x %>%
+  dt <- x %>%
+    lapply(function(x) x[[2]]) %>%
     lapply(function(x) {
-      id <- x[[1]]
-      milliseconds_since_epoch <- substr(x[[1]], 1, 13) %>%
-        as.numeric()
-      timestamp <- as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01")
-
-      names_idx <- seq(1, length(x[[2]]) - 1, by = 2)
-      l <- setNames(x[[2]][-names_idx], x[[2]][names_idx])
-
-      c(list(id = id, timestamp = timestamp, app_id = app_id), l)
+      len <- length(x)
+      nms_ind <- seq(1, len - 1, by = 2)
+      setNames(x[-nms_ind], x[nms_ind]) %>%
+        data.table::as.data.table()
     }) %>%
-    (function(x) {
-      df <- do.call(Map, c(f = c, x)) %>%
-        as.data.frame()
+    data.table::rbindlist(fill = TRUE)
 
-      last_id <- x[[length(x)]][["id"]]
-
-      new_slate_tile(df, app_id = app_id, last_id = last_id)
-    })
+  data.table::set(dt, i = NULL, j = "id", value = sapply(x, function(x) x[[1]]))
+  data.table::set(dt, i = NULL, j = "timestamp", value = id_to_timestamp(dt$id))
+  data.table::set(dt, i = NULL, j = "app_id", value = app_id)
+  new_slate_tile(dt, app_id = app_id, last_id = tail(dt$id, 1))
 }
 
 new_slate_tile <- function(x, ...) {
@@ -131,11 +128,17 @@ new_slate_tile <- function(x, ...) {
 }
 
 #' @export
-print.slate_tile <- function(x, ...) {
-  if (!nrow(x)) {
+print.slate_tile <- function(x, n = 100, ...) {
+
+  nrows <- nrow(x)
+
+  if (!nrows) {
     return(invisible(NULL))
   }
 
+  x <- head(x, n)
+
+  # browser()
   x$timestamp <- crayon::silver(format(x$timestamp, "%Y-%m-%d %H:%M:%OS3"))
 
   apply(x, 1, function(l) {
@@ -148,6 +151,7 @@ print.slate_tile <- function(x, ...) {
     )
 
     l <- l[setdiff(names(l), c("id", "timestamp", "level", "message", "app_id"))]
+    l <- l[!is.na(l)]
 
     optional_output <- if (length(l)) {
       paste0(crayon::silver(paste0(names(l), "=")), l, collapse = " ")
@@ -159,6 +163,10 @@ print.slate_tile <- function(x, ...) {
 
   }) %>%
     cat(sep = "\n")
+
+  if (nrows > n) {
+    cat("  ... ", nrows - n, " records omitted")
+  }
 }
 
 colorize_level <- function(lvl) {
