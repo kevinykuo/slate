@@ -4,28 +4,33 @@
 #' @param app_id App ID.
 #' @param start Start time.
 #' @param end End time.
+#' @param levels Levels.
 #' @export
-peruse <- function(slate, app_id = NULL, start = NULL, end = NULL) {
+peruse <- function(slate, app_id = NULL, start = NULL, end = NULL, levels = NULL) {
   app_id <- if (is.null(app_id)) {
     get_slate_keys(slate)
   }
+  levels <- levels %||% c("TRACE", "INFO", "WARN", "ERROR")
+
+  start <- start %||% "-"
+  end <- end %||% "+"
 
   dt <- app_id %>%
-    lapply(function(x) peruse_impl(slate, app_id = x, start = start, end = end)) %>%
+    lapply(function(x) peruse_impl(slate, app_id = x, start = start, end = end, levels = levels)) %>%
     data.table::rbindlist(fill = TRUE)
 
-  data.table::setorder(dt, "id") %>%
+  data.table::setorderv(dt, cols = "id", order = -1L) %>%
     new_slate_tile()
 }
 
-peruse_impl <- function(slate, app_id, start, end) {
+peruse_impl <- function(slate, app_id, start, end, levels) {
   rc <- slate$rc
   app_id <- app_id %||% slate$default_app_id
   key <- app_id_to_key(app_id)
-  start <- start %||% "-"
-  end <- end %||% "+"
-  rc$command(c("XRANGE", key, start, end)) %>%
-    process_stream_output(app_id = app_id)
+
+  # note reverse start/end
+  rc$command(c("XREVRANGE", key, end, start)) %>%
+    process_stream_output(app_id = app_id, lvls = levels)
 }
 
 #' Stare
@@ -34,8 +39,9 @@ peruse_impl <- function(slate, app_id, start, end) {
 #' @param app_id Vector of app IDs to watch.
 #' @param last_id Starting ID.
 #' @export
-stare <- function(slate, app_id = NULL, last_id = NULL) {
+stare <- function(slate, app_id = NULL, levels = NULL, last_id = NULL) {
   rc <- slate$rc
+  levels <- levels %||% c("TRACE", "INFO", "WARN", "ERROR")
   app_id <- app_id %||% get_slate_keys(slate)
   last_id <- last_id %||% rep("$", length(app_id))
 
@@ -60,7 +66,7 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
 
   if (is.null(res)) return(invisible(NULL)) else {
     res %>%
-      lapply(function(x) process_stream_output(x[[2]], app_id = key_to_app_id(x[[1]])))
+      lapply(function(x) process_stream_output(x[[2]], app_id = key_to_app_id(x[[1]]), lvls = levels))
   }
 }
 
@@ -68,9 +74,11 @@ stare <- function(slate, app_id = NULL, last_id = NULL) {
 #'
 #' @param slate A slate object.
 #' @param app_id Vector of app IDs to watch.
+#' @param levels Levels.
 #'
 #' @export
-gaze <- function(slate, app_id = NULL) {
+gaze <- function(slate, app_id = NULL, levels = NULL) {
+  levels <- levels %||% c("TRACE", "INFO", "WARN", "ERROR")
   app_id <- app_id %||% get_slate_keys(slate)
   # keys <- app_id_to_key(app_id)
   ids <- rep("$", length(app_id))
@@ -87,7 +95,8 @@ gaze <- function(slate, app_id = NULL) {
       tiles <- stare(
         slate = slate,
         app_id = names(l),
-        last_id = as.character(l)
+        last_id = as.character(l),
+        levels = levels
       )
 
       lapply(tiles, function(x) {
@@ -111,7 +120,7 @@ id_to_timestamp <- function(x) {
   as.POSIXct(milliseconds_since_epoch / 1000, origin = "1970-01-01")
 }
 
-process_stream_output <- function(x, app_id) {
+process_stream_output <- function(x, app_id, lvls) {
   if (!length(x)) {
     return(invisible(NULL))
   }
@@ -121,14 +130,15 @@ process_stream_output <- function(x, app_id) {
     lapply(function(x) {
       len <- length(x)
       nms_ind <- seq(1, len - 1, by = 2)
-      setNames(x[-nms_ind], x[nms_ind]) %>%
+      dt <- setNames(x[-nms_ind], x[nms_ind]) %>%
         data.table::as.data.table()
+      dt
     }) %>%
     data.table::rbindlist(fill = TRUE)
-
   data.table::set(dt, i = NULL, j = "id", value = sapply(x, function(x) x[[1]]))
   data.table::set(dt, i = NULL, j = "timestamp", value = id_to_timestamp(dt$id))
   data.table::set(dt, i = NULL, j = "app_id", value = app_id)
+  dt <- dt[dt$level %in% lvls, ]
   new_slate_tile(dt, app_id = app_id, last_id = tail(dt$id, 1))
 }
 

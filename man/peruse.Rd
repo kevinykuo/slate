@@ -4,7 +4,7 @@
 \alias{peruse}
 \title{Peruse}
 \usage{
-peruse(slate, app_id = NULL, start = NULL, end = NULL)
+peruse(slate, app_id = NULL, start = NULL, end = NULL, levels = NULL)
 }
 \arguments{
 \item{slate}{Slate object.}
@@ -14,6 +14,8 @@ peruse(slate, app_id = NULL, start = NULL, end = NULL)
 \item{start}{Start time.}
 
 \item{end}{End time.}
+
+\item{levels}{Levels.}
 }
 \description{
 Peruse
